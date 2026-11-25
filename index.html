@@ -30,11 +30,12 @@
     border-bottom: 1px solid #2a2a4a;
   }
   header h1 { font-size: 1.5rem; background: linear-gradient(90deg, var(--accent), #a78bfa); -webkit-background-clip: text; color: transparent; }
-  .auth-btns button, .user-btns button, #upload-btn {
+  .auth-btns button, .user-btns button, #upload-btn, .profile-btn {
     background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 0.5rem;
   }
-  .auth-btns button:hover, .user-btns button:hover, #upload-btn:hover { background: var(--accent-hover); }
+  .auth-btns button:hover, .user-btns button:hover, #upload-btn:hover, .profile-btn:hover { background: var(--accent-hover); }
   #user-email { margin-right: 0.5rem; color: var(--muted); font-size: 0.9rem; }
+  .header-profile { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 0.5rem; border: 2px solid var(--accent); vertical-align: middle; }
   main { max-width: 600px; margin: 0 auto; padding: 1rem; }
   .feed { display: flex; flex-direction: column; gap: 1.5rem; }
   .post {
@@ -46,9 +47,22 @@
   .post-content { padding: 1rem; }
   .post-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
   .post-desc { color: var(--muted); margin-bottom: 0.75rem; font-size: 0.95rem; }
-  .post-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--muted); }
-  .like-btn { background: none; border: 1px solid #3a3a5a; color: var(--text); padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer; }
+  .post-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; gap: 0.5rem; }
+  .user-info { display: flex; align-items: center; gap: 0.5rem; }
+  .post-profile { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+  .actions { display: flex; gap: 0.5rem; }
+  .like-btn, .repost-btn, .comment-toggle {
+    background: none; border: 1px solid #3a3a5a; color: var(--text); padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;
+  }
   .like-btn:hover, .like-btn.liked { background: var(--danger); border-color: var(--danger); color: white; }
+  .repost-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+  .repost-credit { background: #2a2a4a; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--accent); }
+  .comments { margin-top: 0.75rem; border-top: 1px solid #2a2a4a; padding-top: 0.75rem; }
+  .comment { font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--muted); }
+  .comment strong { color: var(--text); }
+  .comment-form { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .comment-form input { flex: 1; padding: 0.4rem 0.6rem; border: 1px solid #3a3a5a; border-radius: 8px; background: #111; color: var(--text); }
+  .comment-form button { background: var(--accent); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; }
   .empty { text-align: center; padding: 3rem; color: var(--muted); }
   .modal {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
@@ -56,17 +70,19 @@
   }
   .modal.open { display: flex; }
   .modal-content {
-    background: var(--card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 400px;
+    background: var(--card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 420px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   }
   .modal h2 { margin-bottom: 1rem; }
-  .modal input, .modal textarea, .modal select {
+  .modal input, .modal textarea {
     width: 100%; padding: 0.75rem; margin-bottom: 0.75rem; border: 1px solid #3a3a5a; border-radius: 8px;
     background: #111; color: var(--text); font-size: 1rem;
   }
   .modal button { width: 100%; margin-top: 0.5rem; }
   .close { float: right; background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
   .error { color: var(--danger); font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .progress { height: 6px; background: #333; border-radius: 3px; margin: 0.5rem 0; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; }
   @media (max-width: 480px) {
     header { flex-wrap: wrap; gap: 0.5rem; }
     main { padding: 0.5rem; }
@@ -81,7 +97,9 @@
     <button id="signup-btn">Sign Up</button>
   </div>
   <div id="user-section" class="user-btns" style="display:none;">
+    <img id="header-profile" class="header-profile" src="" alt="" style="display:none;">
     <span id="user-email"></span>
+    <button id="profile-btn" class="profile-btn">Profile Pic</button>
     <button id="upload-btn">+ Upload Edit</button>
     <button id="logout-btn">Logout</button>
   </div>
@@ -114,19 +132,29 @@
     <input type="text" id="edit-title" placeholder="Title of your edit" required>
     <textarea id="edit-desc" placeholder="Description (optional)" rows="3"></textarea>
     <input type="file" id="edit-file" accept="image/*,video/*" required>
-    <small style="color:var(--muted);">Images preferred. Videos under ~2MB for local storage.</small>
+    <div id="upload-progress" class="progress" style="display:none;"><div class="progress-bar" id="progress-bar"></div></div>
+    <small style="color:var(--muted);">Uploads go to Firebase Storage (larger videos OK).</small>
     <button id="upload-submit">Post Edit</button>
+  </div>
+</div>
+
+<!-- Profile Pic Modal -->
+<div id="profile-modal" class="modal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('profile-modal')">&times;</button>
+    <h2>Set Profile Picture</h2>
+    <div id="profile-error" class="error"></div>
+    <input type="file" id="profile-file" accept="image/*">
+    <button id="profile-submit">Upload Pic</button>
   </div>
 </div>
 
 <!-- Firebase Compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
 <script>
-// =====================================================
-// PASTE YOUR FIREBASE CONFIG HERE
-// =====================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDSSaUxfZBoNNEGRVTw9dMXSqYSBHJJm4Y",
   authDomain: "editscroll-9cc25.firebaseapp.com",
@@ -137,53 +165,26 @@ const firebaseConfig = {
   measurementId: "G-SHQ39HP3XS"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const storage = firebase.storage();
 
-// State
 let currentUser = null;
 let posts = [];
-let authMode = 'login'; // 'login' or 'signup'
+let profiles = {};
+let authMode = 'login';
 
-// DOM
 const feedEl = document.getElementById('feed');
 const authSection = document.getElementById('auth-section');
 const userSection = document.getElementById('user-section');
 const userEmailEl = document.getElementById('user-email');
+const headerProfile = document.getElementById('header-profile');
 
-// Load posts from localStorage
-function loadPosts() {
-  const saved = localStorage.getItem('editscroll_posts');
-  posts = saved ? JSON.parse(saved) : [];
-  // Add sample posts if empty (family-friendly examples)
-  if (posts.length === 0) {
-    posts = [
-      {
-        id: 'sample1',
-        uid: 'demo',
-        email: 'demo@editscroll.app',
-        title: 'Sunset Color Grade',
-        desc: 'A simple warm color grade on a sunset photo. Perfect for beginners!',
-        media: 'https://picsum.photos/id/1015/600/400',
-        mediaType: 'image',
-        likes: 12,
-        timestamp: Date.now() - 86400000
-      },
-      {
-        id: 'sample2',
-        uid: 'demo',
-        email: 'demo@editscroll.app',
-        title: 'Clean Minimal Edit',
-        desc: 'Bright and clean look. Great for lifestyle photos.',
-        media: 'https://picsum.photos/id/1016/600/400',
-        mediaType: 'image',
-        likes: 8,
-        timestamp: Date.now() - 3600000
-      }
-    ];
-    savePosts();
-  }
+function loadData() {
+  const savedPosts = localStorage.getItem('editscroll_posts');
+  posts = savedPosts ? JSON.parse(savedPosts) : [];
+  const savedProfiles = localStorage.getItem('editscroll_profiles');
+  profiles = savedProfiles ? JSON.parse(savedProfiles) : {};
   renderFeed();
 }
 
@@ -191,37 +192,71 @@ function savePosts() {
   localStorage.setItem('editscroll_posts', JSON.stringify(posts));
 }
 
+function saveProfiles() {
+  localStorage.setItem('editscroll_profiles', JSON.stringify(profiles));
+}
+
+function getProfilePic(uid) {
+  return profiles[uid] || '';
+}
+
 function renderFeed() {
   if (posts.length === 0) {
     feedEl.innerHTML = '<div class="empty">No edits yet. Be the first to upload one!</div>';
     return;
   }
-  // Sort newest first
   const sorted = [...posts].sort((a, b) => b.timestamp - a.timestamp);
-  feedEl.innerHTML = sorted.map(post => `
-    <article class="post">
+  feedEl.innerHTML = sorted.map(post => {
+    const pic = getProfilePic(post.uid);
+    const picHtml = pic ? `<img class="post-profile" src="${pic}" alt="">` : '';
+    const repostHtml = post.isRepost ? `<div class="repost-credit">🔄 Reposted from ${escapeHtml(post.originalUser || 'someone')}</div>` : '';
+    const commentsHtml = (post.comments || []).map(c => 
+      `<div class="comment"><strong>${escapeHtml(c.email.split('@')[0])}</strong>: ${escapeHtml(c.text)}</div>`
+    ).join('');
+    return `
+    <article class="post" id="post-${post.id}">
       ${post.mediaType === 'video'
         ? `<video class="post-media" src="${post.media}" controls playsinline></video>`
         : `<img class="post-media" src="${post.media}" alt="${escapeHtml(post.title)}" loading="lazy">`
       }
       <div class="post-content">
+        ${repostHtml}
         <h3 class="post-title">${escapeHtml(post.title)}</h3>
         ${post.desc ? `<p class="post-desc">${escapeHtml(post.desc)}</p>` : ''}
         <div class="post-meta">
-          <span>by ${escapeHtml(post.email.split('@')[0])} · ${timeAgo(post.timestamp)}</span>
-          <button class="like-btn ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
-                  onclick="toggleLike('${post.id}')">
-            ❤️ ${post.likes || 0}
-          </button>
+          <div class="user-info">
+            ${picHtml}
+            <span>by ${escapeHtml(post.email.split('@')[0])} · ${timeAgo(post.timestamp)}</span>
+          </div>
+          <div class="actions">
+            <button class="like-btn ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
+                    onclick="toggleLike('${post.id}')">❤️ ${post.likes || 0}</button>
+            <button class="repost-btn" onclick="repost('${post.id}')">🔄 Repost</button>
+            <button class="comment-toggle" onclick="toggleComments('${post.id}')">💬 ${(post.comments || []).length}</button>
+          </div>
+        </div>
+        <div class="comments" id="comments-${post.id}" style="display:none;">
+          ${commentsHtml || '<div class="comment">No comments yet.</div>'}
+          ${currentUser ? `
+          <div class="comment-form">
+            <input type="text" id="comment-input-${post.id}" placeholder="Add a comment...">
+            <button onclick="addComment('${post.id}')">Post</button>
+          </div>` : '<div class="comment">Login to comment</div>'}
         </div>
       </div>
-    </article>
-  `).join('');
+    </article>`;
+  }).join('');
 }
 
 function escapeHtml(str) {
   if (!str) return '';
-  return str.replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[m]));
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&',
+    '<': '<',
+    '>': '>',
+    '"': '"',
+    "'": '&#39;'
+  }[m]));
 }
 
 function timeAgo(ts) {
@@ -253,7 +288,64 @@ function toggleLike(id) {
   renderFeed();
 }
 
-// Auth
+function toggleComments(id) {
+  const el = document.getElementById('comments-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function addComment(id) {
+  if (!currentUser) return;
+  const input = document.getElementById('comment-input-' + id);
+  const text = input.value.trim();
+  if (!text) return;
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  post.comments = post.comments || [];
+  post.comments.push({
+    id: Date.now().toString(),
+    uid: currentUser.uid,
+    email: currentUser.email,
+    text,
+    timestamp: Date.now()
+  });
+  savePosts();
+  renderFeed();
+  // Re-open the comments section
+  setTimeout(() => {
+    const el = document.getElementById('comments-' + id);
+    if (el) el.style.display = 'block';
+  }, 50);
+}
+
+function repost(id) {
+  if (!currentUser) {
+    alert('Please login to repost!');
+    openAuth('login');
+    return;
+  }
+  const original = posts.find(p => p.id === id);
+  if (!original) return;
+  const newPost = {
+    id: Date.now().toString(),
+    uid: currentUser.uid,
+    email: currentUser.email,
+    title: original.title,
+    desc: original.desc,
+    media: original.media,
+    mediaType: original.mediaType,
+    likes: 0,
+    likedBy: [],
+    comments: [],
+    timestamp: Date.now(),
+    isRepost: true,
+    originalUser: original.email.split('@')[0],
+    originalId: original.id
+  };
+  posts.unshift(newPost);
+  savePosts();
+  renderFeed();
+}
+
 function openAuth(mode) {
   authMode = mode;
   document.getElementById('auth-title').textContent = mode === 'login' ? 'Login' : 'Sign Up';
@@ -272,7 +364,12 @@ document.getElementById('signup-btn').onclick = () => openAuth('signup');
 document.getElementById('logout-btn').onclick = () => auth.signOut();
 document.getElementById('upload-btn').onclick = () => {
   document.getElementById('upload-error').textContent = '';
+  document.getElementById('upload-progress').style.display = 'none';
   document.getElementById('upload-modal').classList.add('open');
+};
+document.getElementById('profile-btn').onclick = () => {
+  document.getElementById('profile-error').textContent = '';
+  document.getElementById('profile-modal').classList.add('open');
 };
 
 document.getElementById('auth-submit').onclick = async () => {
@@ -298,62 +395,105 @@ document.getElementById('upload-submit').onclick = async () => {
   const desc = document.getElementById('edit-desc').value.trim();
   const fileInput = document.getElementById('edit-file');
   const errEl = document.getElementById('upload-error');
+  const progressEl = document.getElementById('upload-progress');
+  const bar = document.getElementById('progress-bar');
   if (!title || !fileInput.files[0]) { errEl.textContent = 'Title and file required'; return; }
   const file = fileInput.files[0];
-  if (file.size > 2 * 1024 * 1024) { // 2MB limit for localStorage
-    errEl.textContent = 'File too large (max ~2MB for browser storage). Use smaller image.';
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const media = reader.result;
-    const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-    const newPost = {
-      id: Date.now().toString(),
-      uid: currentUser.uid,
-      email: currentUser.email,
-      title,
-      desc,
-      media,
-      mediaType,
-      likes: 0,
-      likedBy: [],
-      timestamp: Date.now()
-    };
-    posts.unshift(newPost);
-    savePosts();
-    renderFeed();
-    closeModal('upload-modal');
-    // reset form
-    document.getElementById('edit-title').value = '';
-    document.getElementById('edit-desc').value = '';
-    fileInput.value = '';
-  };
-  reader.readAsDataURL(file);
+  errEl.textContent = '';
+  progressEl.style.display = 'block';
+  bar.style.width = '0%';
+
+  const storageRef = storage.ref(`edits/${currentUser.uid}/${Date.now()}_${file.name}`);
+  const uploadTask = storageRef.put(file);
+
+  uploadTask.on('state_changed',
+    (snapshot) => {
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      bar.style.width = progress + '%';
+    },
+    (error) => {
+      errEl.textContent = 'Upload failed: ' + error.message;
+      progressEl.style.display = 'none';
+    },
+    async () => {
+      const url = await uploadTask.snapshot.ref.getDownloadURL();
+      const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+      const newPost = {
+        id: Date.now().toString(),
+        uid: currentUser.uid,
+        email: currentUser.email,
+        title,
+        desc,
+        media: url,
+        mediaType,
+        likes: 0,
+        likedBy: [],
+        comments: [],
+        timestamp: Date.now()
+      };
+      posts.unshift(newPost);
+      savePosts();
+      renderFeed();
+      closeModal('upload-modal');
+      document.getElementById('edit-title').value = '';
+      document.getElementById('edit-desc').value = '';
+      fileInput.value = '';
+      progressEl.style.display = 'none';
+    }
+  );
 };
 
-// Auth state
+document.getElementById('profile-submit').onclick = async () => {
+  if (!currentUser) return;
+  const fileInput = document.getElementById('profile-file');
+  const errEl = document.getElementById('profile-error');
+  if (!fileInput.files[0]) { errEl.textContent = 'Choose an image'; return; }
+  const file = fileInput.files[0];
+  const storageRef = storage.ref(`profiles/${currentUser.uid}`);
+  try {
+    const snapshot = await storageRef.put(file);
+    const url = await snapshot.ref.getDownloadURL();
+    profiles[currentUser.uid] = url;
+    saveProfiles();
+    updateHeaderProfile();
+    renderFeed();
+    closeModal('profile-modal');
+    fileInput.value = '';
+  } catch (e) {
+    errEl.textContent = 'Upload failed: ' + e.message;
+  }
+};
+
+function updateHeaderProfile() {
+  if (currentUser && profiles[currentUser.uid]) {
+    headerProfile.src = profiles[currentUser.uid];
+    headerProfile.style.display = 'inline-block';
+  } else {
+    headerProfile.style.display = 'none';
+  }
+}
+
 auth.onAuthStateChanged(user => {
   currentUser = user;
   if (user) {
     authSection.style.display = 'none';
     userSection.style.display = 'flex';
     userEmailEl.textContent = user.email;
+    updateHeaderProfile();
   } else {
     authSection.style.display = 'flex';
     userSection.style.display = 'none';
     userEmailEl.textContent = '';
+    headerProfile.style.display = 'none';
   }
-  renderFeed(); // re-render to update like buttons
+  renderFeed();
 });
 
-// Close modals on background click
 document.querySelectorAll('.modal').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
-// Init
-loadPosts();
+loadData();
 </script>
 </body>
 </html>
