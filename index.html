@@ -576,7 +576,7 @@ function videoPoster(file) {
 }
 
 async function saveChunks(postId, dataUrl, onProgress) {
-  const size = 700000;
+  const size = 400000;
   const parts = [];
   for (let i = 0; i < dataUrl.length; i += size) parts.push(dataUrl.slice(i, i + size));
   for (let i = 0; i < parts.length; i += 1) {
@@ -588,9 +588,13 @@ async function saveChunks(postId, dataUrl, onProgress) {
 
 const videoCache = new Map();
 function dataUrlToBlob(dataUrl) {
-  const parts = String(dataUrl).split(",");
-  const mime = (parts[0].match(/:(.*?);/) || [])[1] || "video/mp4";
-  const bin = atob(parts[1] || "");
+  const text = String(dataUrl || "");
+  const comma = text.indexOf(",");
+  if (comma < 0) throw new Error("Saved video is missing its file data.");
+  const head = text.slice(0, comma);
+  const body = text.slice(comma + 1).replace(/\s/g, "");
+  const mime = (head.match(/:(.*?);/) || [])[1] || "video/mp4";
+  const bin = atob(body);
   const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i += 1) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], { type: mime });
@@ -601,13 +605,27 @@ async function loadVideo(post) {
   let data = post.mediaUrl || "";
   if (!data) {
     const snap = await getDocs(collection(db, "posts", sourceId, "chunks"));
-    const parts = snap.docs.map(d => d.data()).sort((a, b) => a.i - b.i);
-    data = parts.map(p => p.data).join("");
+    if (snap.empty) throw new Error("This video did not finish saving. Post it again.");
+    const parts = snap.docs.map(d => d.data()).sort((a, b) => Number(a.i) - Number(b.i));
+    data = parts.map(p => p.data || "").join("");
   }
-  if (!data) throw new Error("Video pieces were not saved.");
+  if (!data.includes(",")) throw new Error("Saved video data is incomplete.");
   const url = URL.createObjectURL(dataUrlToBlob(data));
   videoCache.set(sourceId, url);
   return url;
+}
+function waitForVideo(el) {
+  return new Promise((resolve, reject) => {
+    if (el.readyState >= 2) return resolve();
+    const ok = () => { cleanup(); resolve(); };
+    const bad = () => { cleanup(); reject(new Error("The browser could not read this video.")); };
+    const cleanup = () => {
+      el.removeEventListener("loadeddata", ok);
+      el.removeEventListener("error", bad);
+    };
+    el.addEventListener("loadeddata", ok);
+    el.addEventListener("error", bad);
+  });
 }
 async function playVideo(id, btn) {
   const post = findPost(id);
@@ -615,13 +633,18 @@ async function playVideo(id, btn) {
   if (!post || !el) return;
   btn.textContent = "…";
   try {
-    if (!el.src) el.src = await loadVideo(post);
+    if (!el.dataset.ready) {
+      el.src = await loadVideo(post);
+      el.load();
+      await waitForVideo(el);
+      el.dataset.ready = "1";
+    }
     el.controls = true;
-    await el.play();
+    try { await el.play(); } catch { /* controls are there, user can press play */ }
     btn.remove();
   } catch (e) {
     btn.textContent = "!";
-    alert("Could not play that video. Post it again if it is under 40 MB.");
+    alert(e.message || "Could not play that video.");
     console.error(e);
   }
 }
