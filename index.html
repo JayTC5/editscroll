@@ -103,6 +103,24 @@
   .hits button { width: 100%; text-align: left; background: none; border: none; color: var(--fg); padding: 0.55rem 0.7rem; }
   .hits button:hover { background: var(--surface-2); }
   .stats { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+  .reel { height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; background: #000; }
+  .slide { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; position: relative; background: #000; overflow: hidden; }
+  .slide .media, .slide video, .slide img { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; object-fit: cover; background: #000; }
+  .slide-top { position: absolute; top: 0; left: 0; right: 0; z-index: 4; display: flex; justify-content: center; gap: 1.2rem; padding: 0.9rem 1rem 2rem; background: linear-gradient(rgba(0,0,0,.45), transparent); }
+  .slide-top button { background: none; border: none; color: rgba(255,255,255,.7); font-size: 1.05rem; font-weight: 700; padding-bottom: 0.25rem; }
+  .slide-top button.on { color: white; border-bottom: 2px solid white; }
+  .slide-ui { position: absolute; left: 0; right: 84px; bottom: 0; z-index: 3; padding: 2.5rem 1rem 1.3rem; background: linear-gradient(transparent, rgba(0,0,0,.65)); color: white; }
+  .slide-ui .name { color: white; font-weight: 700; font-size: 1.05rem; background: none; border: none; }
+  .slide-ui .cap { margin-top: 0.35rem; font-size: 0.95rem; line-height: 1.35; }
+  .slide-side { position: absolute; right: 8px; bottom: 92px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .slide-side button { background: none; border: none; color: white; display: flex; flex-direction: column; align-items: center; gap: 0.15rem; min-width: 52px; }
+  .slide-side button svg { width: 32px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .slide-side button span { font-size: 0.75rem; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .slide-side button.on { color: #fe2c55; }
+  .slide-side .ava { width: 48px; height: 48px; border-radius: 50%; border: 2px solid white; overflow: hidden; background: #222; display: grid; place-items: center; }
+  .slide .comments { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: #121212; max-height: 60%; overflow: auto; border-radius: 16px 16px 0 0; }
+  .sound { position: absolute; top: 14px; right: 14px; z-index: 5; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(0,0,0,.35); color: white; }
+  .plus { position: absolute; top: 12px; left: 12px; z-index: 5; width: 36px; height: 36px; border-radius: 50%; border: none; background: white; color: black; font-size: 1.4rem; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -289,29 +307,33 @@ function wireHeader() {
 
 function renderFeed() {
   const list = state.posts.filter(p => {
-    if (p.ready === false) return false;
+    if (p.ready === false || p.repostOf) return false;
     if (state.mode === "following") return state.following.has(p.uid) || p.uid === state.user.uid;
     return true;
   });
   const scroll = state.mode === "scroll";
   root.innerHTML = `
-    ${header()}
+    ${scroll ? "" : header()}
     <main style="${scroll ? "max-width:none;padding:0" : ""}">
-      <div class="tabs" style="${scroll ? "padding:0.6rem 1rem 0.4rem;margin:0;background:var(--bg)" : ""}">
+      ${scroll ? "" : `<div class="tabs">
         <button class="${state.mode === "scroll" ? "on" : ""}" data-m="scroll">Scroll</button>
         <button class="${state.mode === "all" ? "on" : ""}" data-m="all">All posts</button>
         <button class="${state.mode === "following" ? "on" : ""}" data-m="following">People I follow</button>
-      </div>
+      </div>`}
       ${scroll
         ? `<div class="reel" id="feed">${list.length ? list.map(reelHtml).join("") : `<div class="empty">No posts yet. Tap New post.</div>`}</div>`
         : `<div id="feed">${list.length ? list.map(postHtml).join("") : `<div class="empty">No posts yet.<br>Tap <strong>New post</strong> to add a photo or video.</div>`}</div>`}
     </main>
     ${modalHtml()}`;
-  wireHeader();
-  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { state.mode = b.dataset.m; render(); });
+  if (!scroll) wireHeader();
+  document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { state.mode = b.dataset.m; render(); });
   wirePosts();
   wireModal();
-  if (scroll) watchReel();
+  if (scroll) {
+    const add = document.getElementById("compose");
+    if (add) add.onclick = openCompose;
+    watchReel();
+  }
 }
 
 function reelHtml(p) {
@@ -320,23 +342,24 @@ function reelHtml(p) {
     ? `<video class="media" id="vid-${esc(p.id)}" ${p.poster ? `poster="${esc(p.poster)}"` : ""} playsinline loop preload="metadata"></video>`
     : (p.mediaUrl ? `<img class="media" src="${esc(p.mediaUrl)}" alt="">` : `<div class="media"></div>`);
   const liked = (p.likedBy || []).includes(state.user.uid);
-  const shared = state.posts.some(x => x.uid === state.user.uid && x.repostOf === (p.repostOf || p.id));
   return `
     <section class="slide" data-id="${esc(p.id)}">
       ${media}
+      <button class="plus" id="compose" aria-label="New post">+</button>
+      <div class="slide-top">
+        <button data-m="following" class="${state.mode === "following" ? "on" : ""}">Following</button>
+        <button data-m="scroll" class="${state.mode === "scroll" ? "on" : ""}">For You</button>
+        <button data-m="all">List</button>
+      </div>
       <button class="sound" data-sound="${esc(p.id)}" aria-label="Sound">♪</button>
       <div class="slide-ui">
-        <div>
-          ${p.repostOf ? `<div class="meta">Shared from @${esc(p.originalUsername || "someone")}</div>` : ""}
-          <button class="linkish" data-u="${esc(p.username)}" style="color:white;font-weight:700;font-size:1rem">${esc(p.displayName || p.username)}</button>
-          <div class="meta">@${esc(p.username)}</div>
-          ${p.caption ? `<p class="caption">${esc(p.caption)}</p>` : ""}
-        </div>
+        <button class="name" data-u="${esc(p.username)}">@${esc(p.username)}</button>
+        ${p.caption ? `<p class="cap">${esc(p.caption)}</p>` : ""}
       </div>
       <div class="slide-side">
+        <button data-u="${esc(p.username)}" aria-label="Profile"><span class="ava">${avatarHtml(p.avatar, p.displayName, 44)}</span></button>
         <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}" aria-label="Like">${liked ? I.heartOn : I.heart}<span>${p.likeCount || 0}</span></button>
         <button data-c="${esc(p.id)}" aria-label="Comments">${I.chat}<span>${p.commentCount || 0}</span></button>
-        <button data-rp="${esc(p.id)}" class="rp ${shared ? "on" : ""}" aria-label="Share again">${I.repost}<span>${p.repostCount || 0}</span></button>
       </div>
       <div class="comments" id="c-${esc(p.id)}" style="display:none"></div>
     </section>`;
@@ -376,16 +399,13 @@ function watchReel() {
 }
 
 function postHtml(p) {
-  const credit = p.repostOf ? `<div class="credit">Reposted from <strong>@${esc(p.originalUsername || "someone")}</strong></div>` : "";
   const I = icons();
   const media = p.mediaKind === "video"
     ? `<div class="vid-wrap"><video class="media" id="vid-${esc(p.id)}" ${p.poster ? `poster="${esc(p.poster)}"` : ""} playsinline preload="metadata"></video><button class="play" data-play="${esc(p.id)}" aria-label="Play">▶</button></div>`
     : (p.mediaUrl ? `<img class="media" src="${esc(p.mediaUrl)}" alt="">` : "");
   const liked = (p.likedBy || []).includes(state.user.uid);
-  const shared = state.posts.some(x => x.uid === state.user.uid && x.repostOf === (p.repostOf || p.id));
   return `
     <article class="card" data-id="${esc(p.id)}">
-      ${credit}
       <div class="card-body">
         <div class="row">
           ${avatarHtml(p.avatar, p.displayName)}
@@ -401,7 +421,6 @@ function postHtml(p) {
       <div class="actions">
         <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}" aria-label="Like">${liked ? I.heartOn : I.heart}<span>${p.likeCount || 0}</span></button>
         <button data-c="${esc(p.id)}" aria-label="Comments">${I.chat}<span>${p.commentCount || 0}</span></button>
-        <button data-rp="${esc(p.id)}" class="rp ${shared ? "on" : ""}" aria-label="Share again">${I.repost}<span>${p.repostCount || 0}</span></button>
       </div>
       <div class="comments" id="c-${esc(p.id)}" style="display:none"></div>
     </article>`;
@@ -410,7 +429,6 @@ function postHtml(p) {
 function wirePosts() {
   document.querySelectorAll("[data-u]").forEach(b => b.onclick = () => openProfile(b.dataset.u));
   document.querySelectorAll("[data-like]").forEach(b => b.onclick = () => like(b.dataset.like, b));
-  document.querySelectorAll("[data-rp]").forEach(b => b.onclick = () => repost(b.dataset.rp, b));
   document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => toggleComments(b.dataset.c));
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => removePost(b.dataset.del));
   document.querySelectorAll("[data-play]").forEach(b => b.onclick = () => playVideo(b.dataset.play, b));
@@ -436,44 +454,6 @@ async function like(id, btn) {
 
 function findPost(id) {
   return state.posts.find(p => p.id === id) || (state.profileView?.posts || []).find(p => p.id === id);
-}
-
-async function repost(id, btn) {
-  const original = findPost(id);
-  if (!original) return;
-  const sourceId = original.repostOf || id;
-  const existing = state.posts.find(p => p.uid === state.user.uid && p.repostOf === sourceId);
-  if (existing) {
-    state.posts = state.posts.filter(p => p.id !== existing.id);
-    if (btn) btn.classList.remove("on");
-    deleteDoc(doc(db, "posts", existing.id)).catch(() => {});
-    return;
-  }
-  if (original.uid === state.user.uid && !original.repostOf) return;
-  const source = findPost(sourceId) || original;
-  if (btn) btn.classList.add("on");
-  const ref = await addDoc(collection(db, "posts"), {
-    uid: state.user.uid,
-    username: state.profile.username,
-    displayName: state.profile.displayName,
-    avatar: state.profile.avatar || "",
-    caption: source.caption || "",
-    mediaUrl: source.mediaUrl || "",
-    mediaKind: source.mediaKind || "none",
-    poster: source.poster || "",
-    chunked: !!source.chunked,
-    repostOf: sourceId,
-    originalUsername: source.username,
-    likeCount: 0,
-    commentCount: 0,
-    repostCount: 0,
-    likedBy: [],
-    createdAt: serverTimestamp()
-  });
-  source.repostCount = (source.repostCount || 0) + 1;
-  if (btn) btn.querySelector("span").textContent = source.repostCount;
-  updateDoc(doc(db, "posts", sourceId), { repostCount: increment(1) }).catch(() => {});
-  void ref;
 }
 
 async function toggleComments(id) {
