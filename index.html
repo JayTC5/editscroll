@@ -49,12 +49,21 @@
   .meta { color: var(--muted); font-size: 0.8rem; }
   .caption { margin: 0.75rem 0; line-height: 1.45; }
   .media { width: 100%; max-height: 520px; object-fit: contain; background: #000; display: block; }
-  .actions { display: flex; gap: 0.25rem; }
+  .actions { display: flex; gap: 0.35rem; padding: 0.35rem 0.5rem 0.6rem; }
   .actions button {
-    background: none; border: none; color: var(--muted); padding: 0.45rem 0.7rem; border-radius: 999px; font-size: 0.85rem;
+    background: none; border: none; color: var(--muted);
+    min-width: 64px; min-height: 44px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
   }
+  .actions button svg { width: 22px; height: 22px; }
   .actions button:hover { background: var(--surface-2); color: var(--fg); }
   .actions button.on { color: var(--like); }
+  .actions button.on.rp { color: #60a5fa; }
+  .vid-wrap { position: relative; background: #000; }
+  .vid-wrap .play {
+    position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,.55); color: white; font-size: 1.4rem;
+  }
   .credit { font-size: 0.8rem; color: var(--muted); padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
   .credit strong { color: var(--fg); font-weight: 600; }
   .comments { border-top: 1px solid var(--border); padding: 0.75rem 1rem; }
@@ -152,6 +161,14 @@ function ago(ts) {
   if (s < 3600) return Math.floor(s / 60) + "m";
   if (s < 86400) return Math.floor(s / 3600) + "h";
   return Math.floor(s / 86400) + "d";
+}
+function icons() {
+  return {
+    heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z"/></svg>`,
+    heartOn: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M12 20s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9z"/></svg>`,
+    chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18l-2 3V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6z"/></svg>`,
+    repost: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
+  };
 }
 function avatarHtml(src, name, size = 36) {
   if (src) return `<img class="avatar" src="${esc(src)}" alt="" style="width:${size}px;height:${size}px">`;
@@ -292,10 +309,12 @@ function renderFeed() {
 
 function postHtml(p) {
   const credit = p.repostOf ? `<div class="credit">Reposted from <strong>@${esc(p.originalUsername || "someone")}</strong></div>` : "";
+  const I = icons();
   const media = p.mediaKind === "video"
-    ? `<video class="media" id="vid-${esc(p.id)}" ${p.poster ? `poster="${esc(p.poster)}"` : ""} controls playsinline></video>`
+    ? `<div class="vid-wrap"><video class="media" id="vid-${esc(p.id)}" ${p.poster ? `poster="${esc(p.poster)}"` : ""} playsinline preload="metadata"></video><button class="play" data-play="${esc(p.id)}" aria-label="Play">▶</button></div>`
     : (p.mediaUrl ? `<img class="media" src="${esc(p.mediaUrl)}" alt="">` : "");
   const liked = (p.likedBy || []).includes(state.user.uid);
+  const shared = state.posts.some(x => x.uid === state.user.uid && x.repostOf === (p.repostOf || p.id));
   return `
     <article class="card" data-id="${esc(p.id)}">
       ${credit}
@@ -312,9 +331,9 @@ function postHtml(p) {
       </div>
       ${media}
       <div class="actions">
-        <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}">Like ${p.likeCount || 0}</button>
-        <button data-c="${esc(p.id)}">Comments ${p.commentCount || 0}</button>
-        <button data-rp="${esc(p.id)}">Share again ${p.repostCount || 0}</button>
+        <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}" aria-label="Like">${liked ? I.heartOn : I.heart}<span>${p.likeCount || 0}</span></button>
+        <button data-c="${esc(p.id)}" aria-label="Comments">${I.chat}<span>${p.commentCount || 0}</span></button>
+        <button data-rp="${esc(p.id)}" class="rp ${shared ? "on" : ""}" aria-label="Share again">${I.repost}<span>${p.repostCount || 0}</span></button>
       </div>
       <div class="comments" id="c-${esc(p.id)}" style="display:none"></div>
     </article>`;
@@ -322,50 +341,50 @@ function postHtml(p) {
 
 function wirePosts() {
   document.querySelectorAll("[data-u]").forEach(b => b.onclick = () => openProfile(b.dataset.u));
-  document.querySelectorAll("[data-like]").forEach(b => b.onclick = () => like(b.dataset.like));
-  document.querySelectorAll("[data-rp]").forEach(b => b.onclick = () => repost(b.dataset.rp));
+  document.querySelectorAll("[data-like]").forEach(b => b.onclick = () => like(b.dataset.like, b));
+  document.querySelectorAll("[data-rp]").forEach(b => b.onclick = () => repost(b.dataset.rp, b));
   document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => toggleComments(b.dataset.c));
   document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => removePost(b.dataset.del));
-  document.querySelectorAll("video.media").forEach(async (el) => {
-    const id = el.id.replace("vid-", "");
-    const post = state.posts.find((x) => x.id === id) || (state.profileView?.posts || []).find((x) => x.id === id);
-    if (!post) return;
-    try {
-      if (post.mediaUrl) el.src = post.mediaUrl;
-      else if (post.chunked || post.mediaKind === "video") el.src = await loadVideo(post);
-    } catch (e) {
-      console.error(e);
-    }
-  });
+  document.querySelectorAll("[data-play]").forEach(b => b.onclick = () => playVideo(b.dataset.play, b));
 }
 
-async function like(id) {
-  const post = state.posts.find(p => p.id === id);
+function paintLike(btn, on, count) {
+  const I = icons();
+  btn.classList.toggle("on", on);
+  btn.innerHTML = `${on ? I.heartOn : I.heart}<span>${count}</span>`;
+}
+
+async function like(id, btn) {
+  const post = findPost(id);
   if (!post) return;
   const likedBy = new Set(post.likedBy || []);
   const on = likedBy.has(state.user.uid);
   if (on) likedBy.delete(state.user.uid); else likedBy.add(state.user.uid);
-  await updateDoc(doc(db, "posts", id), {
-    likedBy: [...likedBy],
-    likeCount: Math.max(0, (post.likeCount || 0) + (on ? -1 : 1))
-  });
+  post.likedBy = [...likedBy];
+  post.likeCount = Math.max(0, (post.likeCount || 0) + (on ? -1 : 1));
+  if (btn) paintLike(btn, !on, post.likeCount);
+  updateDoc(doc(db, "posts", id), { likedBy: post.likedBy, likeCount: post.likeCount }).catch(() => {});
 }
 
-async function repost(id) {
-  const original = state.posts.find(p => p.id === id);
+function findPost(id) {
+  return state.posts.find(p => p.id === id) || (state.profileView?.posts || []).find(p => p.id === id);
+}
+
+async function repost(id, btn) {
+  const original = findPost(id);
   if (!original) return;
-  if (original.uid === state.user.uid && !original.repostOf) {
-    alert("You can't repost your own edit.");
-    return;
-  }
-  const existing = state.posts.find(p => p.uid === state.user.uid && p.repostOf === (original.repostOf || id));
-  if (existing) {
-    await deleteDoc(doc(db, "posts", existing.id));
-    return;
-  }
   const sourceId = original.repostOf || id;
-  const source = state.posts.find(p => p.id === sourceId) || original;
-  await addDoc(collection(db, "posts"), {
+  const existing = state.posts.find(p => p.uid === state.user.uid && p.repostOf === sourceId);
+  if (existing) {
+    state.posts = state.posts.filter(p => p.id !== existing.id);
+    if (btn) btn.classList.remove("on");
+    deleteDoc(doc(db, "posts", existing.id)).catch(() => {});
+    return;
+  }
+  if (original.uid === state.user.uid && !original.repostOf) return;
+  const source = findPost(sourceId) || original;
+  if (btn) btn.classList.add("on");
+  const ref = await addDoc(collection(db, "posts"), {
     uid: state.user.uid,
     username: state.profile.username,
     displayName: state.profile.displayName,
@@ -383,7 +402,10 @@ async function repost(id) {
     likedBy: [],
     createdAt: serverTimestamp()
   });
-  await updateDoc(doc(db, "posts", sourceId), { repostCount: increment(1) });
+  source.repostCount = (source.repostCount || 0) + 1;
+  if (btn) btn.querySelector("span").textContent = source.repostCount;
+  updateDoc(doc(db, "posts", sourceId), { repostCount: increment(1) }).catch(() => {});
+  void ref;
 }
 
 async function toggleComments(id) {
@@ -391,30 +413,49 @@ async function toggleComments(id) {
   if (!box) return;
   if (box.style.display === "block") { box.style.display = "none"; return; }
   box.style.display = "block";
-  box.innerHTML = `<p class="meta">Loading…</p>`;
-  const snap = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt")));
-  const rows = snap.docs.map(d => d.data());
-  box.innerHTML = `
-    ${rows.map(c => `<div class="comment"><strong>@${esc(c.username)}</strong> ${esc(c.body)}</div>`).join("") || `<div class="meta">No comments yet.</div>`}
-    <div class="comment-form">
-      <input id="in-${esc(id)}" placeholder="Add a comment">
-      <button class="btn primary" id="go-${esc(id)}">Post</button>
-    </div>`;
-  document.getElementById("go-" + id).onclick = async () => {
-    const input = document.getElementById("in-" + id);
-    const body = input.value.trim();
-    if (!body) return;
-    await addDoc(collection(db, "posts", id, "comments"), {
-      uid: state.user.uid,
-      username: state.profile.username,
-      body: body.slice(0, 280),
-      createdAt: serverTimestamp()
-    });
-    await updateDoc(doc(db, "posts", id), { commentCount: increment(1) });
-    input.value = "";
-    toggleComments(id);
-    setTimeout(() => toggleComments(id), 200);
-  };
+  if (!box.dataset.ready) {
+    box.innerHTML = `<p class="meta">Loading comments…</p>`;
+    const snap = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt")));
+    const rows = snap.docs.map(d => d.data());
+    box.innerHTML = `<div id="clist-${esc(id)}"></div>
+      <div class="comment-form">
+        <input id="in-${esc(id)}" placeholder="Write a comment">
+        <button class="btn primary" id="go-${esc(id)}">Send</button>
+      </div>`;
+    const list = document.getElementById("clist-" + id);
+    rows.forEach(c => list.insertAdjacentHTML("beforeend", commentHtml(c)));
+    if (!rows.length) list.insertAdjacentHTML("beforeend", `<div class="meta" id="empty-${esc(id)}">No comments yet.</div>`);
+    document.getElementById("go-" + id).onclick = () => sendComment(id);
+    box.dataset.ready = "1";
+  }
+}
+
+function commentHtml(c) {
+  return `<div class="comment"><strong>@${esc(c.username)}</strong> ${esc(c.body)}</div>`;
+}
+
+async function sendComment(id) {
+  const input = document.getElementById("in-" + id);
+  const body = input.value.trim();
+  if (!body) return;
+  input.value = "";
+  const mine = { username: state.profile.username, body: body.slice(0, 280) };
+  const empty = document.getElementById("empty-" + id);
+  if (empty) empty.remove();
+  document.getElementById("clist-" + id).insertAdjacentHTML("beforeend", commentHtml(mine));
+  const post = findPost(id);
+  if (post) {
+    post.commentCount = (post.commentCount || 0) + 1;
+    const btn = document.querySelector(`[data-c="${id}"] span`);
+    if (btn) btn.textContent = post.commentCount;
+  }
+  await addDoc(collection(db, "posts", id, "comments"), {
+    uid: state.user.uid,
+    username: state.profile.username,
+    body: mine.body,
+    createdAt: serverTimestamp()
+  });
+  updateDoc(doc(db, "posts", id), { commentCount: increment(1) }).catch(() => {});
 }
 
 async function removePost(id) {
@@ -548,13 +589,43 @@ async function saveChunks(postId, dataUrl, onProgress) {
 }
 
 const videoCache = new Map();
+function dataUrlToBlob(dataUrl) {
+  const parts = String(dataUrl).split(",");
+  const mime = (parts[0].match(/:(.*?);/) || [])[1] || "video/mp4";
+  const bin = atob(parts[1] || "");
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 async function loadVideo(post) {
   const sourceId = post.repostOf || post.id;
   if (videoCache.has(sourceId)) return videoCache.get(sourceId);
-  const snap = await getDocs(query(collection(db, "posts", sourceId, "chunks"), orderBy("i")));
-  const data = snap.docs.map((d) => d.data().data).join("");
-  videoCache.set(sourceId, data);
-  return data;
+  let data = post.mediaUrl || "";
+  if (!data) {
+    const snap = await getDocs(collection(db, "posts", sourceId, "chunks"));
+    const parts = snap.docs.map(d => d.data()).sort((a, b) => a.i - b.i);
+    data = parts.map(p => p.data).join("");
+  }
+  if (!data) throw new Error("Video pieces were not saved.");
+  const url = URL.createObjectURL(dataUrlToBlob(data));
+  videoCache.set(sourceId, url);
+  return url;
+}
+async function playVideo(id, btn) {
+  const post = findPost(id);
+  const el = document.getElementById("vid-" + id);
+  if (!post || !el) return;
+  btn.textContent = "…";
+  try {
+    if (!el.src) el.src = await loadVideo(post);
+    el.controls = true;
+    await el.play();
+    btn.remove();
+  } catch (e) {
+    btn.textContent = "!";
+    alert("Could not play that video. Try posting it again under 8 MB.");
+    console.error(e);
+  }
 }
 function compressImage(file, max = 960, quality = 0.7) {
   return new Promise((resolve, reject) => {
@@ -665,8 +736,12 @@ function listenFeed() {
   if (unsub) unsub();
   const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(40));
   unsub = onSnapshot(q, (snap) => {
-    state.posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (state.view === "feed" && state.profile) render();
+    const next = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const same = state.posts.length === next.length && state.posts.every((p, i) => p.id === next[i].id);
+    state.posts = next;
+    if (state.view !== "feed" || !state.profile) return;
+    if (same && document.getElementById("feed")) return;
+    render();
   }, (err) => {
     console.error(err);
   });
