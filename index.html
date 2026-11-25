@@ -140,13 +140,9 @@ let state = {
 };
 
 function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (m) => ({
-    "&": "&",
-    "<": "<",
-    ">": ">",
-    '"': """,
-    "'": "&#39;"
-  }[m]));
+  const d = document.createElement("div");
+  d.textContent = s == null ? "" : String(s);
+  return d.innerHTML;
 }
 function ago(ts) {
   if (!ts) return "";
