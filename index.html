@@ -3,158 +3,113 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EditScroll - Upload & Scroll Edits</title>
+<title>EditScroll</title>
 <style>
   :root {
-    --bg: #0f0f1a;
-    --card: #1a1a2e;
-    --accent: #6c63ff;
-    --accent-hover: #5a52d5;
-    --text: #e0e0ff;
-    --muted: #a0a0c0;
-    --success: #4ade80;
-    --danger: #f87171;
+    --bg: #0c0c0d;
+    --surface: #141416;
+    --surface-2: #1c1c1f;
+    --fg: #f4f4f5;
+    --muted: #a1a1aa;
+    --subtle: #71717a;
+    --border: #2a2a2e;
+    --accent: #ececef;
+    --accent-fg: #0c0c0d;
+    --like: #e11d48;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; }
+  button, [role="button"] { cursor: pointer; }
   header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(15,15,26,0.95); backdrop-filter: blur(10px);
-    padding: 1rem 1.5rem;
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid #2a2a4a;
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(12,12,13,.92); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex; align-items: center; gap: 0.75rem;
   }
-  header h1 { font-size: 1.5rem; background: linear-gradient(90deg, var(--accent), #a78bfa); -webkit-background-clip: text; color: transparent; }
-  .auth-btns button, .user-btns button, #upload-btn, .profile-btn {
-    background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 0.5rem;
+  header h1 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; }
+  .grow { flex: 1; }
+  .btn {
+    height: 40px; padding: 0 1rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--fg); font-weight: 600; font-size: 0.9rem;
   }
-  .auth-btns button:hover, .user-btns button:hover, #upload-btn:hover, .profile-btn:hover { background: var(--accent-hover); }
-  #user-email { margin-right: 0.5rem; color: var(--muted); font-size: 0.9rem; }
-  .header-profile { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-right: 0.5rem; border: 2px solid var(--accent); vertical-align: middle; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+  .btn:disabled { opacity: 0.5; cursor: wait; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+    background: var(--surface-2); display: grid; place-items: center; font-weight: 600; font-size: 0.85rem;
+  }
   main { max-width: 600px; margin: 0 auto; padding: 1rem; }
-  .feed { display: flex; flex-direction: column; gap: 1.5rem; }
-  .post {
-    background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    transition: transform 0.2s;
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .tabs button { height: 36px; padding: 0 1rem; border-radius: 999px; border: none; background: transparent; color: var(--muted); }
+  .tabs button.on { background: var(--accent); color: var(--accent-fg); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 1rem; }
+  .card-body { padding: 1rem; }
+  .row { display: flex; align-items: center; gap: 0.6rem; }
+  .meta { color: var(--muted); font-size: 0.8rem; }
+  .caption { margin: 0.75rem 0; line-height: 1.45; }
+  .media { width: 100%; max-height: 520px; object-fit: contain; background: #000; display: block; }
+  .actions { display: flex; gap: 0.25rem; }
+  .actions button {
+    background: none; border: none; color: var(--muted); padding: 0.45rem 0.7rem; border-radius: 999px; font-size: 0.85rem;
   }
-  .post:hover { transform: translateY(-4px); }
-  .post-media { width: 100%; max-height: 500px; object-fit: cover; background: #111; }
-  .post-content { padding: 1rem; }
-  .post-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
-  .post-desc { color: var(--muted); margin-bottom: 0.75rem; font-size: 0.95rem; }
-  .post-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--muted); flex-wrap: wrap; gap: 0.5rem; }
-  .user-info { display: flex; align-items: center; gap: 0.5rem; }
-  .post-profile { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
-  .actions { display: flex; gap: 0.5rem; }
-  .like-btn, .repost-btn, .comment-toggle {
-    background: none; border: 1px solid #3a3a5a; color: var(--text); padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer; font-size: 0.85rem;
-  }
-  .like-btn:hover, .like-btn.liked { background: var(--danger); border-color: var(--danger); color: white; }
-  .repost-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
-  .repost-credit { background: #2a2a4a; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--accent); }
-  .comments { margin-top: 0.75rem; border-top: 1px solid #2a2a4a; padding-top: 0.75rem; }
-  .comment { font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--muted); }
-  .comment strong { color: var(--text); }
+  .actions button:hover { background: var(--surface-2); color: var(--fg); }
+  .actions button.on { color: var(--like); }
+  .credit { font-size: 0.8rem; color: var(--muted); padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); }
+  .credit strong { color: var(--fg); font-weight: 600; }
+  .comments { border-top: 1px solid var(--border); padding: 0.75rem 1rem; }
+  .comment { font-size: 0.88rem; margin-bottom: 0.4rem; }
+  .comment strong { font-weight: 600; }
   .comment-form { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-  .comment-form input { flex: 1; padding: 0.4rem 0.6rem; border: 1px solid #3a3a5a; border-radius: 8px; background: #111; color: var(--text); }
-  .comment-form button { background: var(--accent); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; }
-  .empty { text-align: center; padding: 3rem; color: var(--muted); }
+  .comment-form input, .field, textarea {
+    width: 100%; padding: 0.7rem 0.8rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); font-size: 0.95rem;
+  }
+  textarea { resize: vertical; min-height: 72px; }
   .modal {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
-    align-items: center; justify-content: center;
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 40;
+    align-items: flex-end; justify-content: center;
   }
   .modal.open { display: flex; }
-  .modal-content {
-    background: var(--card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 420px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  .sheet {
+    background: var(--surface); width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
+    padding: 1.25rem; border: 1px solid var(--border);
   }
-  .modal h2 { margin-bottom: 1rem; }
-  .modal input, .modal textarea {
-    width: 100%; padding: 0.75rem; margin-bottom: 0.75rem; border: 1px solid #3a3a5a; border-radius: 8px;
-    background: #111; color: var(--text); font-size: 1rem;
+  @media (min-width: 640px) {
+    .modal { align-items: center; }
+    .sheet { border-radius: 16px; }
   }
-  .modal button { width: 100%; margin-top: 0.5rem; }
-  .close { float: right; background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
-  .error { color: var(--danger); font-size: 0.85rem; margin-bottom: 0.5rem; }
-  .progress { height: 6px; background: #333; border-radius: 3px; margin: 0.5rem 0; overflow: hidden; }
-  .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; }
-  @media (max-width: 480px) {
-    header { flex-wrap: wrap; gap: 0.5rem; }
-    main { padding: 0.5rem; }
-  }
+  .error { color: var(--like); font-size: 0.85rem; margin: 0.4rem 0; }
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+  .progress { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin: 0.5rem 0; }
+  .bar { height: 100%; width: 0; background: var(--accent); }
+  .center { min-height: 80vh; display: grid; place-items: center; padding: 1.5rem; }
+  .panel { width: 100%; max-w: 380px; max-width: 380px; }
+  .panel h2 { font-size: 1.8rem; margin-bottom: 0.4rem; }
+  .panel p { color: var(--muted); margin-bottom: 1rem; font-size: 0.95rem; }
+  .stack { display: flex; flex-direction: column; gap: 0.6rem; }
+  .linkish { background: none; border: none; color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+  .search { height: 36px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); padding: 0 0.8rem; width: 140px; }
+  .hits { position: absolute; top: 44px; right: 0; width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .hits button { width: 100%; text-align: left; background: none; border: none; color: var(--fg); padding: 0.55rem 0.7rem; }
+  .hits button:hover { background: var(--surface-2); }
+  .stats { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
 </style>
 </head>
 <body>
-<header>
-  <h1>✨ EditScroll</h1>
-  <div id="auth-section" class="auth-btns">
-    <button id="login-btn">Login</button>
-    <button id="signup-btn">Sign Up</button>
-  </div>
-  <div id="user-section" class="user-btns" style="display:none;">
-    <img id="header-profile" class="header-profile" src="" alt="" style="display:none;">
-    <span id="user-email"></span>
-    <button id="profile-btn" class="profile-btn">Profile Pic</button>
-    <button id="upload-btn">+ Upload Edit</button>
-    <button id="logout-btn">Logout</button>
-  </div>
-</header>
+<div id="app"></div>
 
-<main>
-  <div id="feed" class="feed">
-    <div class="empty">Loading your feed...</div>
-  </div>
-</main>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit,
+  onSnapshot, addDoc, deleteDoc, serverTimestamp, where, getDocs, updateDoc, increment
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<!-- Auth Modal -->
-<div id="auth-modal" class="modal">
-  <div class="modal-content">
-    <button class="close" onclick="closeModal('auth-modal')">&times;</button>
-    <h2 id="auth-title">Login</h2>
-    <div id="auth-error" class="error"></div>
-    <input type="email" id="auth-email" placeholder="Email" required>
-    <input type="password" id="auth-password" placeholder="Password" required>
-    <button id="auth-submit">Continue</button>
-  </div>
-</div>
-
-<!-- Upload Modal -->
-<div id="upload-modal" class="modal">
-  <div class="modal-content">
-    <button class="close" onclick="closeModal('upload-modal')">&times;</button>
-    <h2>Upload an Edit</h2>
-    <div id="upload-error" class="error"></div>
-    <input type="text" id="edit-title" placeholder="Title of your edit" required>
-    <textarea id="edit-desc" placeholder="Description (optional)" rows="3"></textarea>
-    <input type="file" id="edit-file" accept="image/*,video/*" required>
-    <div id="upload-progress" class="progress" style="display:none;"><div class="progress-bar" id="progress-bar"></div></div>
-    <small style="color:var(--muted);">Uploads go to Firebase Storage (larger videos OK).</small>
-    <button id="upload-submit">Post Edit</button>
-  </div>
-</div>
-
-<!-- Profile Pic Modal -->
-<div id="profile-modal" class="modal">
-  <div class="modal-content">
-    <button class="close" onclick="closeModal('profile-modal')">&times;</button>
-    <h2>Set Profile Picture</h2>
-    <div id="profile-error" class="error"></div>
-    <input type="file" id="profile-file" accept="image/*">
-    <button id="profile-submit">Upload Pic</button>
-  </div>
-</div>
-
-<!-- Firebase Compat SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-
-<script>
 const firebaseConfig = {
   apiKey: "AIzaSyDSSaUxfZBoNNEGRVTw9dMXSqYSBHJJm4Y",
   authDomain: "editscroll-9cc25.firebaseapp.com",
@@ -165,335 +120,498 @@ const firebaseConfig = {
   measurementId: "G-SHQ39HP3XS"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const storage = firebase.storage();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-let currentUser = null;
-let posts = [];
-let profiles = {};
-let authMode = 'login';
+const root = document.getElementById("app");
+let state = {
+  user: null,
+  profile: null,
+  ready: false,
+  view: "feed",
+  mode: "all",
+  posts: [],
+  profileView: null,
+  search: "",
+  hits: [],
+  modal: null,
+  error: ""
+};
 
-const feedEl = document.getElementById('feed');
-const authSection = document.getElementById('auth-section');
-const userSection = document.getElementById('user-section');
-const userEmailEl = document.getElementById('user-email');
-const headerProfile = document.getElementById('header-profile');
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => ({
+    "&": "&",
+    "<": "<",
+    ">": ">",
+    '"': """,
+    "'": "&#39;"
+  }[m]));
+}
+function ago(ts) {
+  if (!ts) return "";
+  const t = ts.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  return Math.floor(s / 86400) + "d";
+}
+function avatarHtml(src, name, size = 36) {
+  if (src) return `<img class="avatar" src="${esc(src)}" alt="" style="width:${size}px;height:${size}px">`;
+  const ch = esc((name || "?").slice(0, 1).toUpperCase());
+  return `<span class="avatar" style="width:${size}px;height:${size}px">${ch}</span>`;
+}
 
-function loadData() {
-  const savedPosts = localStorage.getItem('editscroll_posts');
-  posts = savedPosts ? JSON.parse(savedPosts) : [];
-  const savedProfiles = localStorage.getItem('editscroll_profiles');
-  profiles = savedProfiles ? JSON.parse(savedProfiles) : {};
+function render() {
+  if (!state.ready) {
+    root.innerHTML = `<div class="center"><p class="meta">Loading…</p></div>`;
+    return;
+  }
+  if (!state.user) return renderLanding();
+  if (!state.profile) return renderUsername();
+  if (state.view === "profile") return renderProfile();
   renderFeed();
 }
 
-function savePosts() {
-  localStorage.setItem('editscroll_posts', JSON.stringify(posts));
+function renderLanding() {
+  root.innerHTML = `
+    <div class="center">
+      <div class="panel">
+        <h2>EditScroll</h2>
+        <p>Share photo and video edits. Follow people. Scroll the feed.</p>
+        <div class="stack" id="auth-box">
+          <input class="field" id="email" type="email" placeholder="Email">
+          <input class="field" id="password" type="password" placeholder="Password (8+ characters)">
+          <div class="error" id="err"></div>
+          <button class="btn primary" id="signin">Sign in</button>
+          <button class="btn" id="signup">Create account</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById("signin").onclick = () => doAuth(false);
+  document.getElementById("signup").onclick = () => doAuth(true);
 }
 
-function saveProfiles() {
-  localStorage.setItem('editscroll_profiles', JSON.stringify(profiles));
+async function doAuth(isSignUp) {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const err = document.getElementById("err");
+  try {
+    if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
+    else await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    err.textContent = (e.message || "Could not sign in").replace("Firebase: ", "");
+  }
 }
 
-function getProfilePic(uid) {
-  return profiles[uid] || '';
+function renderUsername() {
+  const suggested = (state.user.email || "member").split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "member";
+  root.innerHTML = `
+    <div class="center">
+      <form class="panel stack" id="name-form">
+        <h2>Pick a username</h2>
+        <p>This is how people find you.</p>
+        <input class="field" id="display" placeholder="Display name" value="${esc(suggested)}">
+        <input class="field" id="username" placeholder="username" value="${esc(suggested)}">
+        <div class="error" id="err"></div>
+        <button class="btn primary" type="submit">Continue</button>
+        <button class="linkish" type="button" id="out">Sign out</button>
+      </form>
+    </div>`;
+  document.getElementById("out").onclick = () => signOut(auth);
+  document.getElementById("name-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("username").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const displayName = document.getElementById("display").value.trim().slice(0, 40);
+    const err = document.getElementById("err");
+    if (username.length < 3) { err.textContent = "Username must be at least 3 characters."; return; }
+    if (!displayName) { err.textContent = "Display name is required."; return; }
+    const taken = await getDocs(query(collection(db, "usernames"), where("username", "==", username)));
+    if (!taken.empty && taken.docs[0].id !== state.user.uid) { err.textContent = "That username is taken."; return; }
+    await setDoc(doc(db, "profiles", state.user.uid), {
+      username, displayName, bio: "", avatar: "", createdAt: serverTimestamp()
+    });
+    await setDoc(doc(db, "usernames", state.user.uid), { username });
+    state.profile = { username, displayName, bio: "", avatar: "" };
+    render();
+    listenFeed();
+  };
+}
+
+function header() {
+  return `
+    <header>
+      <h1 id="home">EditScroll</h1>
+      <div class="grow"></div>
+      <div style="position:relative">
+        <input class="search" id="search" placeholder="Search" value="${esc(state.search)}">
+        <div class="hits" id="hits" style="display:none"></div>
+      </div>
+      <button class="btn primary" id="compose">New</button>
+      <button id="me" style="background:none;border:none">${avatarHtml(state.profile.avatar, state.profile.displayName, 32)}</button>
+      <button class="btn" id="out">Out</button>
+    </header>`;
+}
+
+function wireHeader() {
+  document.getElementById("home").onclick = () => { state.view = "feed"; render(); };
+  document.getElementById("me").onclick = () => openProfile(state.profile.username);
+  document.getElementById("out").onclick = () => signOut(auth);
+  document.getElementById("compose").onclick = openCompose;
+  const search = document.getElementById("search");
+  search.oninput = async () => {
+    state.search = search.value;
+    const q = state.search.trim().toLowerCase();
+    const box = document.getElementById("hits");
+    if (q.length < 1) { box.style.display = "none"; return; }
+    const snap = await getDocs(query(collection(db, "profiles"), orderBy("username"), limit(20)));
+    const hits = snap.docs.map(d => d.data()).filter(p => p.username.includes(q) || (p.displayName || "").toLowerCase().includes(q)).slice(0, 6);
+    if (!hits.length) { box.style.display = "none"; return; }
+    box.style.display = "block";
+    box.innerHTML = hits.map(h => `<button data-u="${esc(h.username)}">${esc(h.displayName)} <span class="meta">@${esc(h.username)}</span></button>`).join("");
+    box.querySelectorAll("button").forEach(b => b.onclick = () => openProfile(b.dataset.u));
+  };
 }
 
 function renderFeed() {
-  if (posts.length === 0) {
-    feedEl.innerHTML = '<div class="empty">No edits yet. Be the first to upload one!</div>';
+  const list = state.posts.filter(p => state.mode === "all" || state.following.has(p.uid) || p.uid === state.user.uid);
+  root.innerHTML = `
+    ${header()}
+    <main>
+      <div class="tabs">
+        <button class="${state.mode === "all" ? "on" : ""}" data-m="all">Everyone</button>
+        <button class="${state.mode === "following" ? "on" : ""}" data-m="following">Following</button>
+      </div>
+      <div id="feed">
+        ${list.length ? list.map(postHtml).join("") : `<div class="empty">Nothing here yet. Post the first edit.</div>`}
+      </div>
+    </main>
+    ${modalHtml()}`;
+  wireHeader();
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { state.mode = b.dataset.m; render(); });
+  wirePosts();
+  wireModal();
+}
+
+function postHtml(p) {
+  const credit = p.repostOf ? `<div class="credit">Reposted from <strong>@${esc(p.originalUsername || "someone")}</strong></div>` : "";
+  const media = p.mediaUrl
+    ? (p.mediaKind === "video"
+      ? `<video class="media" src="${esc(p.mediaUrl)}" controls playsinline poster="${esc(p.poster || "")}"></video>`
+      : `<img class="media" src="${esc(p.mediaUrl)}" alt="">`)
+    : "";
+  const liked = (p.likedBy || []).includes(state.user.uid);
+  return `
+    <article class="card" data-id="${esc(p.id)}">
+      ${credit}
+      <div class="card-body">
+        <div class="row">
+          ${avatarHtml(p.avatar, p.displayName)}
+          <div class="grow">
+            <button class="linkish" data-u="${esc(p.username)}" style="color:var(--fg);font-weight:600">${esc(p.displayName || p.username)}</button>
+            <div class="meta">@${esc(p.username)} · ${ago(p.createdAt)}</div>
+          </div>
+          ${p.uid === state.user.uid ? `<button class="linkish" data-del="${esc(p.id)}">Delete</button>` : ""}
+        </div>
+        ${p.caption ? `<p class="caption">${esc(p.caption)}</p>` : ""}
+      </div>
+      ${media}
+      <div class="actions">
+        <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}">Like ${p.likeCount || 0}</button>
+        <button data-c="${esc(p.id)}">Comment ${p.commentCount || 0}</button>
+        <button data-rp="${esc(p.id)}">Repost ${p.repostCount || 0}</button>
+      </div>
+      <div class="comments" id="c-${esc(p.id)}" style="display:none"></div>
+    </article>`;
+}
+
+function wirePosts() {
+  document.querySelectorAll("[data-u]").forEach(b => b.onclick = () => openProfile(b.dataset.u));
+  document.querySelectorAll("[data-like]").forEach(b => b.onclick = () => like(b.dataset.like));
+  document.querySelectorAll("[data-rp]").forEach(b => b.onclick = () => repost(b.dataset.rp));
+  document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => toggleComments(b.dataset.c));
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => removePost(b.dataset.del));
+}
+
+async function like(id) {
+  const post = state.posts.find(p => p.id === id);
+  if (!post) return;
+  const likedBy = new Set(post.likedBy || []);
+  const on = likedBy.has(state.user.uid);
+  if (on) likedBy.delete(state.user.uid); else likedBy.add(state.user.uid);
+  await updateDoc(doc(db, "posts", id), {
+    likedBy: [...likedBy],
+    likeCount: Math.max(0, (post.likeCount || 0) + (on ? -1 : 1))
+  });
+}
+
+async function repost(id) {
+  const original = state.posts.find(p => p.id === id);
+  if (!original) return;
+  if (original.uid === state.user.uid && !original.repostOf) {
+    alert("You can't repost your own edit.");
     return;
   }
-  const sorted = [...posts].sort((a, b) => b.timestamp - a.timestamp);
-  feedEl.innerHTML = sorted.map(post => {
-    const pic = getProfilePic(post.uid);
-    const picHtml = pic ? `<img class="post-profile" src="${pic}" alt="">` : '';
-    const repostHtml = post.isRepost ? `<div class="repost-credit">🔄 Reposted from ${escapeHtml(post.originalUser || 'someone')}</div>` : '';
-    const commentsHtml = (post.comments || []).map(c => 
-      `<div class="comment"><strong>${escapeHtml(c.email.split('@')[0])}</strong>: ${escapeHtml(c.text)}</div>`
-    ).join('');
-    return `
-    <article class="post" id="post-${post.id}">
-      ${post.mediaType === 'video'
-        ? `<video class="post-media" src="${post.media}" controls playsinline></video>`
-        : `<img class="post-media" src="${post.media}" alt="${escapeHtml(post.title)}" loading="lazy">`
+  const existing = state.posts.find(p => p.uid === state.user.uid && p.repostOf === (original.repostOf || id));
+  if (existing) {
+    await deleteDoc(doc(db, "posts", existing.id));
+    return;
+  }
+  const sourceId = original.repostOf || id;
+  const source = state.posts.find(p => p.id === sourceId) || original;
+  await addDoc(collection(db, "posts"), {
+    uid: state.user.uid,
+    username: state.profile.username,
+    displayName: state.profile.displayName,
+    avatar: state.profile.avatar || "",
+    caption: source.caption || "",
+    mediaUrl: source.mediaUrl || "",
+    mediaKind: source.mediaKind || "none",
+    poster: source.poster || "",
+    repostOf: sourceId,
+    originalUsername: source.username,
+    likeCount: 0,
+    commentCount: 0,
+    repostCount: 0,
+    likedBy: [],
+    createdAt: serverTimestamp()
+  });
+  await updateDoc(doc(db, "posts", sourceId), { repostCount: increment(1) });
+}
+
+async function toggleComments(id) {
+  const box = document.getElementById("c-" + id);
+  if (!box) return;
+  if (box.style.display === "block") { box.style.display = "none"; return; }
+  box.style.display = "block";
+  box.innerHTML = `<p class="meta">Loading…</p>`;
+  const snap = await getDocs(query(collection(db, "posts", id, "comments"), orderBy("createdAt")));
+  const rows = snap.docs.map(d => d.data());
+  box.innerHTML = `
+    ${rows.map(c => `<div class="comment"><strong>@${esc(c.username)}</strong> ${esc(c.body)}</div>`).join("") || `<div class="meta">No comments yet.</div>`}
+    <div class="comment-form">
+      <input id="in-${esc(id)}" placeholder="Add a comment">
+      <button class="btn primary" id="go-${esc(id)}">Post</button>
+    </div>`;
+  document.getElementById("go-" + id).onclick = async () => {
+    const input = document.getElementById("in-" + id);
+    const body = input.value.trim();
+    if (!body) return;
+    await addDoc(collection(db, "posts", id, "comments"), {
+      uid: state.user.uid,
+      username: state.profile.username,
+      body: body.slice(0, 280),
+      createdAt: serverTimestamp()
+    });
+    await updateDoc(doc(db, "posts", id), { commentCount: increment(1) });
+    input.value = "";
+    toggleComments(id);
+    setTimeout(() => toggleComments(id), 200);
+  };
+}
+
+async function removePost(id) {
+  if (!confirm("Delete this post?")) return;
+  await deleteDoc(doc(db, "posts", id));
+}
+
+function modalHtml() {
+  if (state.modal !== "compose") return "";
+  return `
+    <div class="modal open" id="modal">
+      <form class="sheet stack" id="compose-form">
+        <h2 style="font-size:1.4rem">New edit</h2>
+        <textarea id="caption" placeholder="What did you change?"></textarea>
+        <input class="field" id="file" type="file" accept="image/*">
+        <p class="meta">Photos only on the free plan. They are compressed so they can save without Storage.</p>
+        <div class="progress" id="prog" style="display:none"><div class="bar" id="bar"></div></div>
+        <div class="error" id="cerr"></div>
+        <button class="btn primary" type="submit">Post</button>
+        <button class="linkish" type="button" id="close">Close</button>
+      </form>
+    </div>`;
+}
+function openCompose() { state.modal = "compose"; render(); }
+function wireModal() {
+  const close = document.getElementById("close");
+  if (close) close.onclick = () => { state.modal = null; render(); };
+  const form = document.getElementById("compose-form");
+  if (!form) return;
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const caption = document.getElementById("caption").value.trim();
+    const file = document.getElementById("file").files[0];
+    const err = document.getElementById("cerr");
+    if (!caption && !file) { err.textContent = "Add a caption or a file."; return; }
+    try {
+      let mediaUrl = "", mediaKind = "none", poster = "";
+      if (file) {
+        if (!file.type.startsWith("image/")) {
+          err.textContent = "Videos need paid Storage. Use a photo for now.";
+          return;
+        }
+        document.getElementById("prog").style.display = "block";
+        document.getElementById("bar").style.width = "40%";
+        mediaUrl = await compressImage(file);
+        if (mediaUrl.length > 900000) mediaUrl = await compressImage(file, 720, 0.55);
+        if (mediaUrl.length > 900000) {
+          err.textContent = "That photo is still too large. Try a smaller one.";
+          return;
+        }
+        document.getElementById("bar").style.width = "100%";
+        mediaKind = "image";
       }
-      <div class="post-content">
-        ${repostHtml}
-        <h3 class="post-title">${escapeHtml(post.title)}</h3>
-        ${post.desc ? `<p class="post-desc">${escapeHtml(post.desc)}</p>` : ''}
-        <div class="post-meta">
-          <div class="user-info">
-            ${picHtml}
-            <span>by ${escapeHtml(post.email.split('@')[0])} · ${timeAgo(post.timestamp)}</span>
+      await addDoc(collection(db, "posts"), {
+        uid: state.user.uid,
+        username: state.profile.username,
+        displayName: state.profile.displayName,
+        avatar: state.profile.avatar || "",
+        caption: caption.slice(0, 500),
+        mediaUrl, mediaKind, poster,
+        repostOf: "",
+        originalUsername: "",
+        likeCount: 0, commentCount: 0, repostCount: 0, likedBy: [],
+        createdAt: serverTimestamp()
+      });
+      state.modal = null;
+      render();
+    } catch (e2) {
+      err.textContent = e2.message || "Upload failed. Check Storage rules.";
+    }
+  };
+}
+
+function compressImage(file, max = 960, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Could not read that image."));
+    img.src = url;
+  });
+}
+
+async function openProfile(username) {
+  const snap = await getDocs(query(collection(db, "profiles"), where("username", "==", username), limit(1)));
+  if (snap.empty) { alert("No one by that name."); return; }
+  const d = snap.docs[0];
+  state.profileView = { uid: d.id, ...d.data() };
+  const posts = await getDocs(query(collection(db, "posts"), where("username", "==", username)));
+  state.profileView.posts = posts.docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  const f = await getDoc(doc(db, "follows", state.user.uid + "_" + state.profileView.uid));
+  state.profileView.following = f.exists();
+  state.view = "profile";
+  render();
+}
+
+function renderProfile() {
+  const p = state.profileView;
+  const isMe = p.uid === state.user.uid;
+  root.innerHTML = `
+    ${header()}
+    <main>
+      <button class="linkish" id="back">Back to feed</button>
+      <div class="row" style="margin-top:1rem;align-items:flex-start">
+        ${avatarHtml(p.avatar, p.displayName, 72)}
+        <div>
+          <h2 style="font-size:1.6rem">${esc(p.displayName)}</h2>
+          <div class="meta">@${esc(p.username)}</div>
+          ${p.bio ? `<p style="margin-top:0.5rem">${esc(p.bio)}</p>` : ""}
+          <div class="stats">${(p.posts || []).length} posts</div>
+          <div style="margin-top:0.6rem">
+            ${isMe
+              ? `<button class="btn" id="edit">Edit profile</button>`
+              : `<button class="btn ${p.following ? "" : "primary"}" id="follow">${p.following ? "Following" : "Follow"}</button>`}
           </div>
-          <div class="actions">
-            <button class="like-btn ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
-                    onclick="toggleLike('${post.id}')">❤️ ${post.likes || 0}</button>
-            <button class="repost-btn" onclick="repost('${post.id}')">🔄 Repost</button>
-            <button class="comment-toggle" onclick="toggleComments('${post.id}')">💬 ${(post.comments || []).length}</button>
-          </div>
-        </div>
-        <div class="comments" id="comments-${post.id}" style="display:none;">
-          ${commentsHtml || '<div class="comment">No comments yet.</div>'}
-          ${currentUser ? `
-          <div class="comment-form">
-            <input type="text" id="comment-input-${post.id}" placeholder="Add a comment...">
-            <button onclick="addComment('${post.id}')">Post</button>
-          </div>` : '<div class="comment">Login to comment</div>'}
         </div>
       </div>
-    </article>`;
-  }).join('');
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>"']/g, m => ({
-    '&': '&',
-    '<': '<',
-    '>': '>',
-    '"': '"',
-    "'": '&#39;'
-  }[m]));
-}
-
-function timeAgo(ts) {
-  const sec = Math.floor((Date.now() - ts) / 1000);
-  if (sec < 60) return 'just now';
-  if (sec < 3600) return Math.floor(sec/60) + 'm ago';
-  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
-  return Math.floor(sec/86400) + 'd ago';
-}
-
-function toggleLike(id) {
-  if (!currentUser) {
-    alert('Please login to like edits!');
-    openAuth('login');
-    return;
-  }
-  const post = posts.find(p => p.id === id);
-  if (!post) return;
-  post.likedBy = post.likedBy || [];
-  const idx = post.likedBy.indexOf(currentUser.uid);
-  if (idx === -1) {
-    post.likedBy.push(currentUser.uid);
-    post.likes = (post.likes || 0) + 1;
-  } else {
-    post.likedBy.splice(idx, 1);
-    post.likes = Math.max(0, (post.likes || 1) - 1);
-  }
-  savePosts();
-  renderFeed();
-}
-
-function toggleComments(id) {
-  const el = document.getElementById('comments-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-function addComment(id) {
-  if (!currentUser) return;
-  const input = document.getElementById('comment-input-' + id);
-  const text = input.value.trim();
-  if (!text) return;
-  const post = posts.find(p => p.id === id);
-  if (!post) return;
-  post.comments = post.comments || [];
-  post.comments.push({
-    id: Date.now().toString(),
-    uid: currentUser.uid,
-    email: currentUser.email,
-    text,
-    timestamp: Date.now()
-  });
-  savePosts();
-  renderFeed();
-  // Re-open the comments section
-  setTimeout(() => {
-    const el = document.getElementById('comments-' + id);
-    if (el) el.style.display = 'block';
-  }, 50);
-}
-
-function repost(id) {
-  if (!currentUser) {
-    alert('Please login to repost!');
-    openAuth('login');
-    return;
-  }
-  const original = posts.find(p => p.id === id);
-  if (!original) return;
-  const newPost = {
-    id: Date.now().toString(),
-    uid: currentUser.uid,
-    email: currentUser.email,
-    title: original.title,
-    desc: original.desc,
-    media: original.media,
-    mediaType: original.mediaType,
-    likes: 0,
-    likedBy: [],
-    comments: [],
-    timestamp: Date.now(),
-    isRepost: true,
-    originalUser: original.email.split('@')[0],
-    originalId: original.id
+      <div style="margin-top:1.2rem">${(p.posts || []).map(postHtml).join("") || `<div class="empty">No posts yet.</div>`}</div>
+    </main>
+    ${state.modal === "edit" ? editModal() : ""}`;
+  wireHeader();
+  document.getElementById("back").onclick = () => { state.view = "feed"; render(); };
+  wirePosts();
+  if (isMe) document.getElementById("edit").onclick = () => { state.modal = "edit"; render(); };
+  else document.getElementById("follow").onclick = async () => {
+    const id = state.user.uid + "_" + p.uid;
+    if (p.following) await deleteDoc(doc(db, "follows", id));
+    else await setDoc(doc(db, "follows", id), { follower: state.user.uid, following: p.uid });
+    state.following = state.following || new Set();
+    if (p.following) state.following.delete(p.uid); else state.following.add(p.uid);
+    p.following = !p.following;
+    render();
   };
-  posts.unshift(newPost);
-  savePosts();
-  renderFeed();
-}
-
-function openAuth(mode) {
-  authMode = mode;
-  document.getElementById('auth-title').textContent = mode === 'login' ? 'Login' : 'Sign Up';
-  document.getElementById('auth-error').textContent = '';
-  document.getElementById('auth-email').value = '';
-  document.getElementById('auth-password').value = '';
-  document.getElementById('auth-modal').classList.add('open');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-document.getElementById('login-btn').onclick = () => openAuth('login');
-document.getElementById('signup-btn').onclick = () => openAuth('signup');
-document.getElementById('logout-btn').onclick = () => auth.signOut();
-document.getElementById('upload-btn').onclick = () => {
-  document.getElementById('upload-error').textContent = '';
-  document.getElementById('upload-progress').style.display = 'none';
-  document.getElementById('upload-modal').classList.add('open');
-};
-document.getElementById('profile-btn').onclick = () => {
-  document.getElementById('profile-error').textContent = '';
-  document.getElementById('profile-modal').classList.add('open');
-};
-
-document.getElementById('auth-submit').onclick = async () => {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const errEl = document.getElementById('auth-error');
-  if (!email || !password) { errEl.textContent = 'Please fill all fields'; return; }
-  try {
-    if (authMode === 'signup') {
-      await auth.createUserWithEmailAndPassword(email, password);
-    } else {
-      await auth.signInWithEmailAndPassword(email, password);
-    }
-    closeModal('auth-modal');
-  } catch (e) {
-    errEl.textContent = e.message.replace('Firebase: ', '');
-  }
-};
-
-document.getElementById('upload-submit').onclick = async () => {
-  if (!currentUser) return;
-  const title = document.getElementById('edit-title').value.trim();
-  const desc = document.getElementById('edit-desc').value.trim();
-  const fileInput = document.getElementById('edit-file');
-  const errEl = document.getElementById('upload-error');
-  const progressEl = document.getElementById('upload-progress');
-  const bar = document.getElementById('progress-bar');
-  if (!title || !fileInput.files[0]) { errEl.textContent = 'Title and file required'; return; }
-  const file = fileInput.files[0];
-  errEl.textContent = '';
-  progressEl.style.display = 'block';
-  bar.style.width = '0%';
-
-  const storageRef = storage.ref(`edits/${currentUser.uid}/${Date.now()}_${file.name}`);
-  const uploadTask = storageRef.put(file);
-
-  uploadTask.on('state_changed',
-    (snapshot) => {
-      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      bar.style.width = progress + '%';
-    },
-    (error) => {
-      errEl.textContent = 'Upload failed: ' + error.message;
-      progressEl.style.display = 'none';
-    },
-    async () => {
-      const url = await uploadTask.snapshot.ref.getDownloadURL();
-      const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-      const newPost = {
-        id: Date.now().toString(),
-        uid: currentUser.uid,
-        email: currentUser.email,
-        title,
-        desc,
-        media: url,
-        mediaType,
-        likes: 0,
-        likedBy: [],
-        comments: [],
-        timestamp: Date.now()
-      };
-      posts.unshift(newPost);
-      savePosts();
-      renderFeed();
-      closeModal('upload-modal');
-      document.getElementById('edit-title').value = '';
-      document.getElementById('edit-desc').value = '';
-      fileInput.value = '';
-      progressEl.style.display = 'none';
-    }
-  );
-};
-
-document.getElementById('profile-submit').onclick = async () => {
-  if (!currentUser) return;
-  const fileInput = document.getElementById('profile-file');
-  const errEl = document.getElementById('profile-error');
-  if (!fileInput.files[0]) { errEl.textContent = 'Choose an image'; return; }
-  const file = fileInput.files[0];
-  const storageRef = storage.ref(`profiles/${currentUser.uid}`);
-  try {
-    const snapshot = await storageRef.put(file);
-    const url = await snapshot.ref.getDownloadURL();
-    profiles[currentUser.uid] = url;
-    saveProfiles();
-    updateHeaderProfile();
-    renderFeed();
-    closeModal('profile-modal');
-    fileInput.value = '';
-  } catch (e) {
-    errEl.textContent = 'Upload failed: ' + e.message;
-  }
-};
-
-function updateHeaderProfile() {
-  if (currentUser && profiles[currentUser.uid]) {
-    headerProfile.src = profiles[currentUser.uid];
-    headerProfile.style.display = 'inline-block';
-  } else {
-    headerProfile.style.display = 'none';
+  const form = document.getElementById("edit-form");
+  if (form) {
+    document.getElementById("close").onclick = () => { state.modal = null; render(); };
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const displayName = document.getElementById("ed-name").value.trim().slice(0, 40);
+      const bio = document.getElementById("ed-bio").value.trim().slice(0, 160);
+      const file = document.getElementById("ed-file").files[0];
+      let avatar = state.profile.avatar || "";
+      if (file) {
+        avatar = await compressImage(file, 256, 0.7);
+        if (avatar.length > 180000) avatar = await compressImage(file, 160, 0.6);
+      }
+      await updateDoc(doc(db, "profiles", state.user.uid), { displayName, bio, avatar });
+      state.profile = { ...state.profile, displayName, bio, avatar };
+      state.profileView = { ...state.profileView, displayName, bio, avatar };
+      state.modal = null;
+      render();
+    };
   }
 }
 
-auth.onAuthStateChanged(user => {
-  currentUser = user;
-  if (user) {
-    authSection.style.display = 'none';
-    userSection.style.display = 'flex';
-    userEmailEl.textContent = user.email;
-    updateHeaderProfile();
-  } else {
-    authSection.style.display = 'flex';
-    userSection.style.display = 'none';
-    userEmailEl.textContent = '';
-    headerProfile.style.display = 'none';
+function editModal() {
+  return `
+    <div class="modal open">
+      <form class="sheet stack" id="edit-form">
+        <h2 style="font-size:1.4rem">Edit profile</h2>
+        <input class="field" id="ed-name" value="${esc(state.profile.displayName)}">
+        <textarea id="ed-bio" placeholder="Bio">${esc(state.profile.bio || "")}</textarea>
+        <input class="field" id="ed-file" type="file" accept="image/*">
+        <button class="btn primary" type="submit">Save</button>
+        <button class="linkish" type="button" id="close">Close</button>
+      </form>
+    </div>`;
+}
+
+let unsub = null;
+function listenFeed() {
+  if (unsub) unsub();
+  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(40));
+  unsub = onSnapshot(q, (snap) => {
+    state.posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (state.view === "feed" && state.profile) render();
+  }, (err) => {
+    console.error(err);
+  });
+}
+
+onAuthStateChanged(auth, async (user) => {
+  state.user = user;
+  state.ready = true;
+  state.following = new Set();
+  if (!user) { state.profile = null; if (unsub) unsub(); render(); return; }
+  const pref = await getDoc(doc(db, "profiles", user.uid));
+  state.profile = pref.exists() ? pref.data() : null;
+  if (state.profile) {
+    const follows = await getDocs(query(collection(db, "follows"), where("follower", "==", user.uid)));
+    state.following = new Set(follows.docs.map(d => d.data().following));
+    listenFeed();
   }
-  renderFeed();
+  render();
 });
-
-document.querySelectorAll('.modal').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-
-loadData();
 </script>
 </body>
 </html>
