@@ -139,7 +139,7 @@ let state = {
   profile: null,
   ready: false,
   view: "feed",
-  mode: "all",
+  mode: "scroll",
   posts: [],
   profileView: null,
   search: "",
@@ -288,23 +288,91 @@ function wireHeader() {
 }
 
 function renderFeed() {
-  const list = state.posts.filter(p => state.mode === "all" || state.following.has(p.uid) || p.uid === state.user.uid);
+  const list = state.posts.filter(p => {
+    if (p.ready === false) return false;
+    if (state.mode === "following") return state.following.has(p.uid) || p.uid === state.user.uid;
+    return true;
+  });
+  const scroll = state.mode === "scroll";
   root.innerHTML = `
     ${header()}
-    <main>
-      <div class="tabs">
+    <main style="${scroll ? "max-width:none;padding:0" : ""}">
+      <div class="tabs" style="${scroll ? "padding:0.6rem 1rem 0.4rem;margin:0;background:var(--bg)" : ""}">
+        <button class="${state.mode === "scroll" ? "on" : ""}" data-m="scroll">Scroll</button>
         <button class="${state.mode === "all" ? "on" : ""}" data-m="all">All posts</button>
         <button class="${state.mode === "following" ? "on" : ""}" data-m="following">People I follow</button>
       </div>
-      <div id="feed">
-        ${list.length ? list.map(postHtml).join("") : `<div class="empty">No posts yet.<br>Tap <strong>New post</strong> to add a photo or video.</div>`}
-      </div>
+      ${scroll
+        ? `<div class="reel" id="feed">${list.length ? list.map(reelHtml).join("") : `<div class="empty">No posts yet. Tap New post.</div>`}</div>`
+        : `<div id="feed">${list.length ? list.map(postHtml).join("") : `<div class="empty">No posts yet.<br>Tap <strong>New post</strong> to add a photo or video.</div>`}</div>`}
     </main>
     ${modalHtml()}`;
   wireHeader();
   document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => { state.mode = b.dataset.m; render(); });
   wirePosts();
   wireModal();
+  if (scroll) watchReel();
+}
+
+function reelHtml(p) {
+  const I = icons();
+  const media = p.mediaKind === "video"
+    ? `<video class="media" id="vid-${esc(p.id)}" ${p.poster ? `poster="${esc(p.poster)}"` : ""} playsinline loop preload="metadata"></video>`
+    : (p.mediaUrl ? `<img class="media" src="${esc(p.mediaUrl)}" alt="">` : `<div class="media"></div>`);
+  const liked = (p.likedBy || []).includes(state.user.uid);
+  const shared = state.posts.some(x => x.uid === state.user.uid && x.repostOf === (p.repostOf || p.id));
+  return `
+    <section class="slide" data-id="${esc(p.id)}">
+      ${media}
+      <button class="sound" data-sound="${esc(p.id)}" aria-label="Sound">♪</button>
+      <div class="slide-ui">
+        <div>
+          ${p.repostOf ? `<div class="meta">Shared from @${esc(p.originalUsername || "someone")}</div>` : ""}
+          <button class="linkish" data-u="${esc(p.username)}" style="color:white;font-weight:700;font-size:1rem">${esc(p.displayName || p.username)}</button>
+          <div class="meta">@${esc(p.username)}</div>
+          ${p.caption ? `<p class="caption">${esc(p.caption)}</p>` : ""}
+        </div>
+      </div>
+      <div class="slide-side">
+        <button data-like="${esc(p.id)}" class="${liked ? "on" : ""}" aria-label="Like">${liked ? I.heartOn : I.heart}<span>${p.likeCount || 0}</span></button>
+        <button data-c="${esc(p.id)}" aria-label="Comments">${I.chat}<span>${p.commentCount || 0}</span></button>
+        <button data-rp="${esc(p.id)}" class="rp ${shared ? "on" : ""}" aria-label="Share again">${I.repost}<span>${p.repostCount || 0}</span></button>
+      </div>
+      <div class="comments" id="c-${esc(p.id)}" style="display:none"></div>
+    </section>`;
+}
+
+function watchReel() {
+  const rootEl = document.querySelector(".reel");
+  if (!rootEl) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(async (entry) => {
+      const vid = entry.target.querySelector("video");
+      if (!vid) return;
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.7) {
+        const id = vid.id.replace("vid-", "");
+        const post = findPost(id);
+        try {
+          if (post && !vid.dataset.ready) {
+            vid.src = await loadVideo(post);
+            vid.dataset.ready = "1";
+          }
+          vid.muted = true;
+          vid.play().catch(() => {});
+        } catch (e) { console.error(e); }
+      } else {
+        vid.pause();
+      }
+    });
+  }, { root: rootEl, threshold: [0.7] });
+  rootEl.querySelectorAll(".slide").forEach((s) => io.observe(s));
+  rootEl.querySelectorAll("[data-sound]").forEach((b) => b.onclick = () => {
+    const vid = document.getElementById("vid-" + b.dataset.sound);
+    if (!vid) return;
+    vid.muted = !vid.muted;
+    b.textContent = vid.muted ? "♪" : "🔊";
+    if (!vid.muted) vid.play().catch(() => {});
+  });
 }
 
 function postHtml(p) {
