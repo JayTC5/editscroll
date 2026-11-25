@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EditScroll - Upload & Scroll Edits</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --accent: #6c63ff;
+    --accent-hover: #5a52d5;
+    --text: #e0e0ff;
+    --muted: #a0a0c0;
+    --success: #4ade80;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,15,26,0.95); backdrop-filter: blur(10px);
+    padding: 1rem 1.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid #2a2a4a;
+  }
+  header h1 { font-size: 1.5rem; background: linear-gradient(90deg, var(--accent), #a78bfa); -webkit-background-clip: text; color: transparent; }
+  .auth-btns button, .user-btns button, #upload-btn {
+    background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 0.5rem;
+  }
+  .auth-btns button:hover, .user-btns button:hover, #upload-btn:hover { background: var(--accent-hover); }
+  #user-email { margin-right: 0.5rem; color: var(--muted); font-size: 0.9rem; }
+  main { max-width: 600px; margin: 0 auto; padding: 1rem; }
+  .feed { display: flex; flex-direction: column; gap: 1.5rem; }
+  .post {
+    background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+  }
+  .post:hover { transform: translateY(-4px); }
+  .post-media { width: 100%; max-height: 500px; object-fit: cover; background: #111; }
+  .post-content { padding: 1rem; }
+  .post-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .post-desc { color: var(--muted); margin-bottom: 0.75rem; font-size: 0.95rem; }
+  .post-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--muted); }
+  .like-btn { background: none; border: 1px solid #3a3a5a; color: var(--text); padding: 0.3rem 0.8rem; border-radius: 20px; cursor: pointer; }
+  .like-btn:hover, .like-btn.liked { background: var(--danger); border-color: var(--danger); color: white; }
+  .empty { text-align: center; padding: 3rem; color: var(--muted); }
+  .modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal.open { display: flex; }
+  .modal-content {
+    background: var(--card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 400px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+  .modal h2 { margin-bottom: 1rem; }
+  .modal input, .modal textarea, .modal select {
+    width: 100%; padding: 0.75rem; margin-bottom: 0.75rem; border: 1px solid #3a3a5a; border-radius: 8px;
+    background: #111; color: var(--text); font-size: 1rem;
+  }
+  .modal button { width: 100%; margin-top: 0.5rem; }
+  .close { float: right; background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+  .error { color: var(--danger); font-size: 0.85rem; margin-bottom: 0.5rem; }
+  @media (max-width: 480px) {
+    header { flex-wrap: wrap; gap: 0.5rem; }
+    main { padding: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>✨ EditScroll</h1>
+  <div id="auth-section" class="auth-btns">
+    <button id="login-btn">Login</button>
+    <button id="signup-btn">Sign Up</button>
+  </div>
+  <div id="user-section" class="user-btns" style="display:none;">
+    <span id="user-email"></span>
+    <button id="upload-btn">+ Upload Edit</button>
+    <button id="logout-btn">Logout</button>
+  </div>
+</header>
+
+<main>
+  <div id="feed" class="feed">
+    <div class="empty">Loading your feed...</div>
+  </div>
+</main>
+
+<!-- Auth Modal -->
+<div id="auth-modal" class="modal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('auth-modal')">&times;</button>
+    <h2 id="auth-title">Login</h2>
+    <div id="auth-error" class="error"></div>
+    <input type="email" id="auth-email" placeholder="Email" required>
+    <input type="password" id="auth-password" placeholder="Password" required>
+    <button id="auth-submit">Continue</button>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="modal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('upload-modal')">&times;</button>
+    <h2>Upload an Edit</h2>
+    <div id="upload-error" class="error"></div>
+    <input type="text" id="edit-title" placeholder="Title of your edit" required>
+    <textarea id="edit-desc" placeholder="Description (optional)" rows="3"></textarea>
+    <input type="file" id="edit-file" accept="image/*,video/*" required>
+    <small style="color:var(--muted);">Images preferred. Videos under ~2MB for local storage.</small>
+    <button id="upload-submit">Post Edit</button>
+  </div>
+</div>
+
+<!-- Firebase Compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<script>
+// =====================================================
+// PASTE YOUR FIREBASE CONFIG HERE
+// =====================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDSSaUxfZBoNNEGRVTw9dMXSqYSBHJJm4Y",
+  authDomain: "editscroll-9cc25.firebaseapp.com",
+  projectId: "editscroll-9cc25",
+  storageBucket: "editscroll-9cc25.firebasestorage.app",
+  messagingSenderId: "54477852695",
+  appId: "1:54477852695:web:f9a7c22f173a5801fe0c52",
+  measurementId: "G-SHQ39HP3XS"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+// State
+let currentUser = null;
+let posts = [];
+let authMode = 'login'; // 'login' or 'signup'
+
+// DOM
+const feedEl = document.getElementById('feed');
+const authSection = document.getElementById('auth-section');
+const userSection = document.getElementById('user-section');
+const userEmailEl = document.getElementById('user-email');
+
+// Load posts from localStorage
+function loadPosts() {
+  const saved = localStorage.getItem('editscroll_posts');
+  posts = saved ? JSON.parse(saved) : [];
+  // Add sample posts if empty (family-friendly examples)
+  if (posts.length === 0) {
+    posts = [
+      {
+        id: 'sample1',
+        uid: 'demo',
+        email: 'demo@editscroll.app',
+        title: 'Sunset Color Grade',
+        desc: 'A simple warm color grade on a sunset photo. Perfect for beginners!',
+        media: 'https://picsum.photos/id/1015/600/400',
+        mediaType: 'image',
+        likes: 12,
+        timestamp: Date.now() - 86400000
+      },
+      {
+        id: 'sample2',
+        uid: 'demo',
+        email: 'demo@editscroll.app',
+        title: 'Clean Minimal Edit',
+        desc: 'Bright and clean look. Great for lifestyle photos.',
+        media: 'https://picsum.photos/id/1016/600/400',
+        mediaType: 'image',
+        likes: 8,
+        timestamp: Date.now() - 3600000
+      }
+    ];
+    savePosts();
+  }
+  renderFeed();
+}
+
+function savePosts() {
+  localStorage.setItem('editscroll_posts', JSON.stringify(posts));
+}
+
+function renderFeed() {
+  if (posts.length === 0) {
+    feedEl.innerHTML = '<div class="empty">No edits yet. Be the first to upload one!</div>';
+    return;
+  }
+  // Sort newest first
+  const sorted = [...posts].sort((a, b) => b.timestamp - a.timestamp);
+  feedEl.innerHTML = sorted.map(post => `
+    <article class="post">
+      ${post.mediaType === 'video'
+        ? `<video class="post-media" src="${post.media}" controls playsinline></video>`
+        : `<img class="post-media" src="${post.media}" alt="${escapeHtml(post.title)}" loading="lazy">`
+      }
+      <div class="post-content">
+        <h3 class="post-title">${escapeHtml(post.title)}</h3>
+        ${post.desc ? `<p class="post-desc">${escapeHtml(post.desc)}</p>` : ''}
+        <div class="post-meta">
+          <span>by ${escapeHtml(post.email.split('@')[0])} · ${timeAgo(post.timestamp)}</span>
+          <button class="like-btn ${post.likedBy && post.likedBy.includes(currentUser?.uid) ? 'liked' : ''}" 
+                  onclick="toggleLike('${post.id}')">
+            ❤️ ${post.likes || 0}
+          </button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, m => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[m]));
+}
+
+function timeAgo(ts) {
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+
+function toggleLike(id) {
+  if (!currentUser) {
+    alert('Please login to like edits!');
+    openAuth('login');
+    return;
+  }
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  post.likedBy = post.likedBy || [];
+  const idx = post.likedBy.indexOf(currentUser.uid);
+  if (idx === -1) {
+    post.likedBy.push(currentUser.uid);
+    post.likes = (post.likes || 0) + 1;
+  } else {
+    post.likedBy.splice(idx, 1);
+    post.likes = Math.max(0, (post.likes || 1) - 1);
+  }
+  savePosts();
+  renderFeed();
+}
+
+// Auth
+function openAuth(mode) {
+  authMode = mode;
+  document.getElementById('auth-title').textContent = mode === 'login' ? 'Login' : 'Sign Up';
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-modal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.getElementById('login-btn').onclick = () => openAuth('login');
+document.getElementById('signup-btn').onclick = () => openAuth('signup');
+document.getElementById('logout-btn').onclick = () => auth.signOut();
+document.getElementById('upload-btn').onclick = () => {
+  document.getElementById('upload-error').textContent = '';
+  document.getElementById('upload-modal').classList.add('open');
+};
+
+document.getElementById('auth-submit').onclick = async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  if (!email || !password) { errEl.textContent = 'Please fill all fields'; return; }
+  try {
+    if (authMode === 'signup') {
+      await auth.createUserWithEmailAndPassword(email, password);
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+    }
+    closeModal('auth-modal');
+  } catch (e) {
+    errEl.textContent = e.message.replace('Firebase: ', '');
+  }
+};
+
+document.getElementById('upload-submit').onclick = async () => {
+  if (!currentUser) return;
+  const title = document.getElementById('edit-title').value.trim();
+  const desc = document.getElementById('edit-desc').value.trim();
+  const fileInput = document.getElementById('edit-file');
+  const errEl = document.getElementById('upload-error');
+  if (!title || !fileInput.files[0]) { errEl.textContent = 'Title and file required'; return; }
+  const file = fileInput.files[0];
+  if (file.size > 2 * 1024 * 1024) { // 2MB limit for localStorage
+    errEl.textContent = 'File too large (max ~2MB for browser storage). Use smaller image.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const media = reader.result;
+    const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+    const newPost = {
+      id: Date.now().toString(),
+      uid: currentUser.uid,
+      email: currentUser.email,
+      title,
+      desc,
+      media,
+      mediaType,
+      likes: 0,
+      likedBy: [],
+      timestamp: Date.now()
+    };
+    posts.unshift(newPost);
+    savePosts();
+    renderFeed();
+    closeModal('upload-modal');
+    // reset form
+    document.getElementById('edit-title').value = '';
+    document.getElementById('edit-desc').value = '';
+    fileInput.value = '';
+  };
+  reader.readAsDataURL(file);
+};
+
+// Auth state
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    authSection.style.display = 'none';
+    userSection.style.display = 'flex';
+    userEmailEl.textContent = user.email;
+  } else {
+    authSection.style.display = 'flex';
+    userSection.style.display = 'none';
+    userEmailEl.textContent = '';
+  }
+  renderFeed(); // re-render to update like buttons
+});
+
+// Close modals on background click
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// Init
+loadPosts();
+</script>
+</body>
+</html>
